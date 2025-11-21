@@ -2,6 +2,10 @@
 FROM node:18-alpine AS builder
 WORKDIR /app
 
+# Build arguments for environment variables
+ARG VITE_API_URL=https://mch-push-backend.ajjhi1.easypanel.host/api
+ENV VITE_API_URL=$VITE_API_URL
+
 # Install build dependencies
 COPY package*.json ./
 COPY package-lock*.json ./
