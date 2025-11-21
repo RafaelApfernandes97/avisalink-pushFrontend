@@ -5,12 +5,12 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3001,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3000',
-        target: 'https://mch-push-backend.ajjhi1.easypanel.host',
-        changeOrigin: true,
-      },
-    },
+    // Proxy desabilitado - usando VITE_API_URL do .env.local
+    // proxy: {
+    //   '/api': {
+    //     target: 'https://mch-push-backend.ajjhi1.easypanel.host/',
+    //     changeOrigin: true,
+    //   },
+    // },
   },
 })
