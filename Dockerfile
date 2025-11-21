@@ -19,14 +19,18 @@ RUN if [ -f package-lock.json ]; then \
 COPY . .
 RUN npm run build
 
-# Production stage: serve static files with nginx
-FROM nginx:stable-alpine
+# Production stage: serve with simple Node server
+FROM node:18-alpine
+WORKDIR /app
 
-# Copy built files
-COPY --from=builder /app/dist /usr/share/nginx/html
+# Install serve package globally
+RUN npm install -g serve
 
-# Copy custom nginx configuration for SPA routing
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy built files from builder
+COPY --from=builder /app/dist ./dist
 
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+# Expose port
+EXPOSE 3000
+
+# Serve the static files with SPA support
+CMD ["serve", "-s", "dist", "-l", "3000"]
