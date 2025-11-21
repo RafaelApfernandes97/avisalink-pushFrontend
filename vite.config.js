@@ -8,6 +8,7 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: 'http://localhost:3000',
+        target: 'https://mch-push-backend.ajjhi1.easypanel.host',
         changeOrigin: true,
       },
     },
