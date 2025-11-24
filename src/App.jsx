@@ -1,5 +1,5 @@
-import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Login from './pages/Login';
@@ -9,6 +9,7 @@ import OptInPage from './pages/OptInPage';
 import Unauthorized from './pages/Unauthorized';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './contexts/AuthContext';
+import logger from './utils/logger';
 
 const theme = createTheme({
   palette: {
@@ -23,6 +24,13 @@ const theme = createTheme({
 
 function App() {
   const { isAuthenticated, isAdmin } = useAuth();
+  const location = useLocation();
+
+  // Log de mudança de rota
+  useEffect(() => {
+    logger.info(`📍 Navegação: ${location.pathname}`);
+    console.log(`🧭 Rota atual: ${location.pathname}`);
+  }, [location]);
 
   return (
     <ThemeProvider theme={theme}>
