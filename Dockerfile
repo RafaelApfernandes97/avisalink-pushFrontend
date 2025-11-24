@@ -9,7 +9,7 @@ ENV VITE_API_URL=$VITE_API_URL
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
+# Install all dependencies (including devDependencies for build)
 RUN npm install
 
 # Copy source and build
@@ -20,14 +20,21 @@ RUN npm run build
 FROM node:18-alpine
 WORKDIR /app
 
-# Install serve
-RUN npm install -g serve
+# Set environment
+ENV NODE_ENV=production
 
-# Copy built files
+# Copy package files
+COPY package*.json ./
+
+# Install only production dependencies (including express)
+RUN npm install --omit=dev
+
+# Copy built files and server script
 COPY --from=builder /app/dist ./dist
+COPY server.js ./
 
 # Expose port
 EXPOSE 3000
 
-# Start server
-CMD ["serve", "-s", "dist", "-l", "3000"]
+# Start custom server
+CMD ["node", "server.js"]
