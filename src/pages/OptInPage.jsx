@@ -44,6 +44,16 @@ const OptInPage = () => {
     }
   };
 
+  // Detectar iOS/Safari
+  const isIOS = () => {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+           (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  };
+
+  const isSafari = () => {
+    return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  };
+
   const handleSubscribe = async () => {
     // Validação dos campos obrigatórios
     if (linkData?.form_fields?.require_name && !formData.name) {
@@ -63,8 +73,27 @@ const OptInPage = () => {
     setError('');
 
     try {
+      // Verificar suporte a notificações
+      if (!('Notification' in window)) {
+        console.error('Este navegador não suporta notificações');
+        setError('Seu navegador não suporta notificações push. Por favor, use Chrome, Firefox ou Safari atualizado.');
+        setSubscribing(false);
+        return;
+      }
+
+      const isIOSDevice = isIOS();
+      const isSafariBrowser = isSafari();
+
+      console.log('Device detection:', { isIOSDevice, isSafariBrowser });
+
       // Request notification permission
-      const permission = await Notification.requestPermission();
+      let permission = Notification.permission;
+
+      if (permission === 'default') {
+        permission = await Notification.requestPermission();
+      }
+
+      console.log('Notification permission:', permission);
 
       if (permission !== 'granted') {
         setError('Você precisa permitir notificações para continuar');
@@ -77,29 +106,83 @@ const OptInPage = () => {
       // Try to get service worker and subscription
       if ('serviceWorker' in navigator && 'PushManager' in window) {
         try {
+          console.log('Registering service worker...');
+
           // Always register/update service worker to ensure latest version
           let registration = await navigator.serviceWorker.register('/sw.js', {
-            updateViaCache: 'none' // Disable caching to always get latest version
+            updateViaCache: 'none', // Disable caching to always get latest version
+            scope: '/'
           });
+
+          console.log('Service worker registered:', registration);
 
           // Wait for service worker to be ready
           await navigator.serviceWorker.ready;
+          console.log('Service worker ready');
 
-          // Force update check
-          await registration.update();
+          // Force update check (não suportado em todos browsers)
+          if (registration.update) {
+            try {
+              await registration.update();
+              console.log('Service worker updated');
+            } catch (updateError) {
+              console.warn('Service worker update not supported:', updateError);
+            }
+          }
 
           // Get VAPID public key
+          console.log('Fetching VAPID key...');
           const vapidResponse = await api.get('/public/vapid');
           const vapidPublicKey = vapidResponse.data.data.vapid_public_key;
+          console.log('VAPID key received');
+
+          // Check if already subscribed
+          const existingSubscription = await registration.pushManager.getSubscription();
+
+          if (existingSubscription) {
+            console.log('Found existing subscription, unsubscribing first...');
+            await existingSubscription.unsubscribe();
+          }
 
           // Subscribe to push notifications
+          console.log('Subscribing to push...');
           subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
           });
+
+          console.log('Push subscription successful:', subscription);
         } catch (swError) {
-          console.warn('Service Worker error:', swError);
-          // Continue without push subscription
+          console.error('Service Worker error:', swError);
+          console.error('Error name:', swError.name);
+          console.error('Error message:', swError.message);
+
+          // Mensagens específicas por tipo de erro
+          if (swError.name === 'NotAllowedError') {
+            setError('Permissão de notificação negada. Por favor, habilite nas configurações do navegador.');
+            setSubscribing(false);
+            return;
+          } else if (swError.name === 'NotSupportedError') {
+            console.warn('Push not supported, continuing without push subscription');
+            // Continue para registrar mesmo sem push
+          } else if (isIOSDevice && swError.message.includes('subscription')) {
+            // Erro específico do iOS - pode ser limitação do Safari
+            console.warn('iOS Push API limitation:', swError);
+            setError('Seu dispositivo iOS pode ter limitações com notificações push. Tente usar Safari em vez de outros navegadores, ou adicione este site à tela inicial.');
+            setSubscribing(false);
+            return;
+          } else {
+            // Outros erros - continuar sem push subscription
+            console.warn('Push subscription failed, continuing without it:', swError);
+          }
+        }
+      } else {
+        console.warn('Service Worker or Push Manager not available');
+
+        if (isIOSDevice) {
+          setError('Notificações push não estão totalmente disponíveis no seu navegador iOS. Por favor, use Safari ou adicione este site à tela inicial.');
+          setSubscribing(false);
+          return;
         }
       }
 
@@ -110,6 +193,8 @@ const OptInPage = () => {
         phone: formData.phone || undefined,
         custom_data: {},
         subscription: subscription ? subscription.toJSON() : null,
+        platform: isIOSDevice ? 'ios' : 'other',
+        browser: isSafariBrowser ? 'safari' : 'other'
       };
 
       console.log('Sending opt-in data:', payload);
@@ -122,7 +207,8 @@ const OptInPage = () => {
       setFormData({ name: '', email: '', phone: '' });
     } catch (err) {
       console.error('Subscription error:', err);
-      setError(err.response?.data?.error || err.response?.data?.message || 'Erro ao se inscrever');
+      console.error('Error details:', err.response?.data);
+      setError(err.response?.data?.error || err.response?.data?.message || 'Erro ao se inscrever. Por favor, tente novamente.');
     } finally {
       setSubscribing(false);
     }
@@ -152,6 +238,25 @@ const OptInPage = () => {
       backgroundColor: linkData.customization.secondary_color || '#424242',
     },
   } : {};
+
+  // Detectar se precisa mostrar aviso iOS
+  const showIOSWarning = () => {
+    const isIOSDevice = isIOS();
+    const isSafariBrowser = isSafari();
+
+    // Mostrar aviso se for iOS mas não Safari, ou iOS antigo
+    if (isIOSDevice && !isSafariBrowser) {
+      return true;
+    }
+
+    // Verificar versão do iOS (simplificado)
+    const match = navigator.userAgent.match(/OS (\d+)_/);
+    if (match && parseInt(match[1]) < 16) {
+      return true;
+    }
+
+    return false;
+  };
 
   if (loading) {
     return (
@@ -249,6 +354,14 @@ const OptInPage = () => {
               </Alert>
             ) : (
               <>
+                {/* Aviso específico para iOS */}
+                {showIOSWarning() && (
+                  <Alert severity="info" sx={{ mb: 2 }}>
+                    📱 <strong>Usuários iOS:</strong> Para receber notificações, use o Safari e certifique-se de ter iOS 16.4 ou superior.
+                    Para melhor experiência, adicione este site à tela inicial.
+                  </Alert>
+                )}
+
                 {error && (
                   <Alert severity="error" sx={{ mb: 2 }}>
                     {error}
