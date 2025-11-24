@@ -312,7 +312,7 @@ const TenantManagement = () => {
               setFormData({ ...formData, slug: cleanSlug });
             }}
             disabled={editingTenant !== null}
-            error={formData.slug && !/^[a-z0-9-]+$/.test(formData.slug)}
+            error={Boolean(formData.slug && !/^[a-z0-9-]+$/.test(formData.slug))}
           />
           <TextField
             margin="dense"

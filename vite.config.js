@@ -8,7 +8,7 @@ export default defineConfig({
     // Proxy desabilitado - usando VITE_API_URL do .env.local
     // proxy: {
     //   '/api': {
-    //     target: 'https://mch-push-backendv1.ajjhi1.easypanel.host/',
+    //     target: 'http://localhost:3001/',
     //     changeOrigin: true,
     //   },
     // },
