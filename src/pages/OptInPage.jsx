@@ -168,7 +168,7 @@ const OptInPage = () => {
           } else if (isIOSDevice && swError.message.includes('subscription')) {
             // Erro específico do iOS - pode ser limitação do Safari
             console.warn('iOS Push API limitation:', swError);
-            setError('Seu dispositivo iOS pode ter limitações com notificações push. Tente usar Safari em vez de outros navegadores, ou adicione este site à tela inicial.');
+            setError('Erro ao criar inscrição no iOS. Certifique-se de estar usando Safari no iOS 16.4+. Se o problema persistir, tente limpar o cache ou adicionar este site à tela inicial.');
             setSubscribing(false);
             return;
           } else {
@@ -180,7 +180,7 @@ const OptInPage = () => {
         console.warn('Service Worker or Push Manager not available');
 
         if (isIOSDevice) {
-          setError('Notificações push não estão totalmente disponíveis no seu navegador iOS. Por favor, use Safari ou adicione este site à tela inicial.');
+          setError('Seu navegador iOS não suporta notificações push. Use Safari no iOS 16.4 ou superior. Se já estiver usando Safari, verifique se o iOS está atualizado.');
           setSubscribing(false);
           return;
         }
@@ -357,8 +357,8 @@ const OptInPage = () => {
                 {/* Aviso específico para iOS */}
                 {showIOSWarning() && (
                   <Alert severity="info" sx={{ mb: 2 }}>
-                    📱 <strong>Usuários iOS:</strong> Para receber notificações, use o Safari e certifique-se de ter iOS 16.4 ou superior.
-                    Para melhor experiência, adicione este site à tela inicial.
+                    📱 <strong>Usuários iOS:</strong> Use o Safari e certifique-se de ter iOS 16.4 ou superior.
+                    Se encontrar problemas, tente adicionar este site à tela inicial para melhor experiência.
                   </Alert>
                 )}
 

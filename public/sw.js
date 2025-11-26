@@ -1,7 +1,10 @@
 // Service Worker for Push Notifications
-// Version: 2.0.0 - Click tracking fix
-const SW_VERSION = '2.0.0';
+// Version: 2.1.0 - API URL fix for production
+const SW_VERSION = '2.1.0';
 console.log('Service Worker version:', SW_VERSION);
+
+// API URL - será substituído durante o build
+const API_URL = '__API_URL__';
 
 self.addEventListener('push', (event) => {
   if (!event.data) return;
@@ -56,8 +59,12 @@ self.addEventListener('push', (event) => {
   // Track notification delivered/viewed
   if (notificationId) {
     const deliveryData = customerId ? { customer_id: customerId } : {};
+    const apiUrl = API_URL !== '__API_URL__' ? API_URL : 'http://localhost:3000/api';
+    const trackingUrl = `${apiUrl}/public/notifications/${notificationId}/delivered`;
 
-    fetch(`/api/public/notifications/${notificationId}/delivered`, {
+    console.log('Tracking delivery to:', trackingUrl);
+
+    fetch(trackingUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(deliveryData)
@@ -97,8 +104,13 @@ self.addEventListener('notificationclick', (event) => {
   }
 
   // Track click first (before opening window)
+  const apiUrl = API_URL !== '__API_URL__' ? API_URL : 'http://localhost:3000/api';
+  const trackingUrl = `${apiUrl}/public/notifications/${notificationId}/clicked`;
+
+  console.log('Tracking click to:', trackingUrl);
+
   const trackingPromise = notificationId
-    ? fetch(`/api/public/notifications/${notificationId}/clicked`, {
+    ? fetch(trackingUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ customer_id: customerId })
